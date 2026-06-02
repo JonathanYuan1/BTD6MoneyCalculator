@@ -3,6 +3,7 @@ public class BananaFarm {
     private int middlePath;
     private int bottomPath;
     private boolean monkeyKnowledge;
+    private int monkeyNumber;
     
     private static boolean bananaCentralExists = false;
 
