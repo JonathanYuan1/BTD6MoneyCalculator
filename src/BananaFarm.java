@@ -3,23 +3,29 @@ public class BananaFarm {
     private int middlePath;
     private int bottomPath;
     private boolean monkeyKnowledge;
+    private double start;
+    private boolean sold = false;
     
     private static boolean bananaCentralExists = false;
 
-    public BananaFarm(int topPath, int middlePath, int bottomPath, boolean monkeyKnowledge){
+    public BananaFarm(int topPath, int middlePath, int bottomPath, boolean monkeyKnowledge, double startingCash){
         if (topPath <0 || topPath >5||
             middlePath <0 || middlePath >5 ||
             bottomPath <0 || bottomPath >5){
                 throw new IllegalArgumentException("Failed to Make: Tiers Outside 0 and 5.");
             }
         if (topPath != 0 && middlePath != 0 && bottomPath != 0) {throw new IllegalArgumentException("Failed to Make: Triple Crosspaths.");}
-        if (topPath >2 && middlePath >2 || topPath>2 && bottomPath >2 || middlePath>2 || bottomPath >2){throw new IllegalArgumentException("Failed to Make: Multiple Main CrossPaths.");}
-        //Test whether the tiers are legal
+        boolean topmid = topPath > 2 && middlePath>2;
+        boolean topbot = topPath >2 && bottomPath>2;
+        boolean midbot = middlePath >2 && bottomPath>2;
+        if (topmid || topbot || midbot){throw new IllegalArgumentException("Failed to Make: Multiple Main CrossPaths.");}
+        //Test whether the inputs are legal
         
         this.topPath = topPath;
         this.middlePath = middlePath;
         this.bottomPath = bottomPath;
         this.monkeyKnowledge = monkeyKnowledge;
+        this.start = startingCash;
         if (topPath == 5){
             bananaCentralExists = true;
         }
@@ -33,25 +39,93 @@ public class BananaFarm {
     public int getBottomPath(){
         return this.bottomPath;
     }
+    public boolean isSold(){
+        return sold;
+    }
+    public void sell(){
+        sold = true;
+    }
+    public void collect(){
+        start = 0;
+    }
+    public int getMaxStore(){
+        if (middlePath>=3){
+            if (monkeyKnowledge){
+                if (middlePath>=4){
+                    return 12500;
+                } else{
+                    return 9500;
+                }
+            } else {
+                if (middlePath>=4){
+                    return 10000;
+                } else{
+                    return 7000;
+                }
+            }
+        } else {return 0;}
+    }
+    public boolean shouldCollectNow() {
+        double potentialAmountInBank = (start+ this.valueOfBanana())*1.15;
+        return potentialAmountInBank > this.getMaxStore();
+    }
+    public double getDepositAmount(){
+        return start;
+        /*double potentialAmountInBank = (start + this.valueOfBanana())*1.15;
+            if (monkeyKnowledge){
+                if (middlePath>=4){
+                    if (potentialAmountInBank > 12500){//imf full
+                        return 12500;
+                    } else { //imf not full
+                        return potentialAmountInBank;
+                    }
+                } else {
+                    if (potentialAmountInBank > 9500){ //bank full
+                        return 9500;
+                    } else { //bank not full
+                        return potentialAmountInBank;
+                    }
+                }
+            } else { // no Monkey Knowledge
+                if (middlePath>=4){
+                    if (potentialAmountInBank > 10000){//imf full
+                        return 10000;
+                    } else { //imf not full
+                        return potentialAmountInBank;
+                    }
+                } else {
+                    if (potentialAmountInBank > 7000){ //bank full
+                        return 7500;
+                    } else { //bank not full
+                        return potentialAmountInBank;
+                    }
+                }
+            }*/
+    }
 
     public int numBananasPerRound(){
-        if (this.topPath==0){
-            return 4;
-        } else if (this.topPath == 1){
-            return 6;
-        } else if (this.topPath == 2){
-            return 8;
-        } else if (this.topPath == 3){
-            return 16;
-        } else if (this.topPath >3){
-            return 5;
-        }else {return 0;}
+        int base = 4;
+        if (topPath <= 2){ //for top path tier 2 or below, gain 2 extra bananas for each tier of top path
+            base += topPath *2;
+        }
+        if (topPath == 3){
+            base=16;}
+        if (topPath >=4){
+            base=5;
+        }
+        if (middlePath>=3){
+            base=1; //because banks are weird, seperate system
+        }
+        if (bottomPath>= 3){
+            base+=12;
+        }
+        return base;
     }
     public double valueOfBanana(){
-        if (topPath >= 3){
-            double base = 20.0;
+        double base = 20.0;
+        if (topPath >= 3){ //TOP PATH
             boolean BRFBuff = false;
-            if(this.topPath<4 && this.topPath>=0){
+            if(this.topPath == 3){
                 base = 20.0;
             } else if (this.topPath == 4){
                 base = 300.0;
@@ -72,16 +146,97 @@ public class BananaFarm {
             } else {
                 if (BRFBuff) {base = 375;}
             }
-           
             return base;
 
         } else if (middlePath >=3 ) { //MIDDLE PATH
-            return 0; 
+            base = 180;
+            base += topPath*40;
+            if (monkeyKnowledge){ //for valueable bananas
+                base*=1.3;
+            } else{
+                base*=1.25;
+            }
         } else if (bottomPath >= 3) { //BOTTOM PATH
-            return 0;
-        } else {return 0;}
+            if (bottomPath >= 4){ //Central Market
+                base = 70.0;
+            }
+            if (middlePath ==2){ //Valuable Bananas
+                if (monkeyKnowledge){return base*1.3;}
+                else{return base*1.25;}
+            } else{return base;}      
+        } //END CHECK
+        if (middlePath ==2){ //less than three tiers for each path (no main path)
+                if (monkeyKnowledge){return base*1.3;}
+                else{return base*1.25;}
+        } else{return base;}  
+
     }
      public double incomePerRound(){
+        if (sold) { //sold should give no income
+            return 0;
+        }
+        if (middlePath >=3){
+            double potentialAmountInBank = (start + this.valueOfBanana())*1.15;
+            int max = this.getMaxStore();
+            double amountMade = 0;
+            if (potentialAmountInBank > max){
+                amountMade = max - start;
+                start = max;
+                return amountMade;
+            } else{
+                amountMade = potentialAmountInBank - start;
+                start = potentialAmountInBank;
+                return amountMade;
+            }
+
+            /*if (monkeyKnowledge){
+                if (middlePath>=4){
+                    if (potentialAmountInBank > 12500){//imf full
+                        double amountMade = 12500- start;
+                        start =12500;
+                        return amountMade;
+                    } else { //imf not full
+                        double amountMade = potentialAmountInBank - start;
+                        start = potentialAmountInBank;
+                        return amountMade;
+                    }
+                } else {
+                    if (potentialAmountInBank > 9500){ //bank full
+                        double amountMade = 9500-start;
+                        start = 9500;
+                        return amountMade;
+                    } else { //bank not full
+                        double amountMade = potentialAmountInBank - start;
+                        start = potentialAmountInBank;
+                        return amountMade;
+                    }
+                }
+            } else { // no Monkey Knowledge
+                if (middlePath>=4){
+                    if (potentialAmountInBank > 10000){//imf full
+                        double amountMade = 10000- start;
+                        start =10000;
+                        return amountMade;
+                    } else { //imf not full
+                        double amountMade = potentialAmountInBank - start;
+                        start = potentialAmountInBank;
+                        return amountMade;
+                    }
+                } else {
+                    if (potentialAmountInBank > 7000){ //bank full
+                        double amountMade = 7000-start;
+                        start = 7000;
+                        return amountMade;
+                    } else { //bank not full
+                        double amountMade = potentialAmountInBank - start;
+                        start = potentialAmountInBank;
+                        return amountMade;
+                    }
+                }
+            }*/
+        }
+
+
         if (bottomPath == 5){
             return valueOfBanana()*numBananasPerRound() + 4000; //CHANGE: affected by monkey city
         } else{
